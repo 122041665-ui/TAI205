@@ -1,0 +1,22 @@
+#importamos la imagen base de python
+FROM python:3.12-slim
+
+#Crear Carpeta de trabajo
+WORKDIR /app
+
+#Copiamos el archivo de requerimientos a la carpeta de trabajo
+COPY requirements.txt .
+
+#Instalamos las dependencias
+RUN pip install --no-cache-dir -r requirements.txt
+
+#Copiamos todos los archivos del proyecto a la carpeta de trabajo
+COPY ./app .app
+
+#Exponemos el puerto 8000 para la aplicación
+EXPOSE 5000
+
+#Comando para ejecutar la aplicación
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
+
+
