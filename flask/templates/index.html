@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>http en flask</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<h1>CRUD</h1>
+<p id="msg"></p>
+
+<h2>Crear</h2>
+<form id="crear">
+  <input id="id" placeholder="id" required>
+  <input id="nombre" placeholder="nombre" required>
+  <input id="edad" placeholder="edad" required>
+  <button>Agregar</button>
+</form>
+
+<h2>Lista</h2>
+<button id="cargar">Cargar</button>
+<ul id="lista"></ul>
+
+<h2>Actualizar</h2>
+<form id="actualizar">
+  <input id="upId" placeholder="id" required>
+  <input id="upNombre" placeholder="nuevo nombre">
+  <input id="upEdad" placeholder="nueva edad">
+  <button>Actualizar</button>
+</form>
+
+<h2>Eliminar</h2>
+<form id="eliminar">
+  <input id="delId" placeholder="id" required>
+  <button>Eliminar</button>
+</form>
+
+<script>
+const msg = document.getElementById("msg");
+const lista = document.getElementById("lista");
+
+async function cargar() {
+  lista.innerHTML = "";
+  const r = await fetch("/v1/usuario/");
+  const d = await r.json();
+  d.data.forEach(u => {
+    const li = document.createElement("li");
+    li.textContent = `${u.id} - ${u.nombre} - ${u.edad}`;
+    lista.appendChild(li);
+  });
+}
+
+document.getElementById("cargar").onclick = cargar;
+
+document.getElementById("crear").onsubmit = async (e) => {
+  e.preventDefault();
+  const body = {
+    id: id.value, nombre: nombre.value, edad: edad.value
+  };
+  const r = await fetch("/v1/usuarios/", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  msg.textContent = d.mensaje || d.detail || "ok";
+  e.target.reset();
+  cargar();
+};
+
+document.getElementById("actualizar").onsubmit = async (e) => {
+  e.preventDefault();
+  const idv = upId.value;
+  const body = {};
+  if (upNombre.value) body.nombre = upNombre.value;
+  if (upEdad.value) body.edad = upEdad.value;
+
+  const r = await fetch(`/v1/usuarios/${idv}`, {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  msg.textContent = d.mensaje || d.detail || "ok";
+  e.target.reset();
+  cargar();
+};
+
+document.getElementById("eliminar").onsubmit = async (e) => {
+  e.preventDefault();
+  const idv = delId.value;
+
+  const r = await fetch(`/v1/usuarios/${idv}`, { method: "DELETE" });
+  const d = await r.json();
+  msg.textContent = d.mensaje || d.detail || "ok";
+  e.target.reset();
+  cargar();
+};
+
+cargar();
+</script>
+
+</body>
+</html>

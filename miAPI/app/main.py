@@ -1,108 +1,115 @@
-from fastapi import FastAPI, HTTPException, status
+# ============================
+# 1. IMPORTACIONES
+# ============================
+from fastapi import FastAPI, status, HTTPException
 from typing import Optional
+from pydantic import BaseModel, Field
 import asyncio
 
+# ============================
+# 2. INSTANCIA DEL SERVIDOR
+# ============================
+app = FastAPI(
+    title="Mi primer API",
+    description="Ivan Isay Guerra L",
+    version="1.0"
+)
 
-# 2. Inicialización APP
-app = FastAPI(title='Mi PRIMER API', 
-              description="Rafael Resendiz Vazquez ", 
-              version='1.0.0')
-
-#BD ficticia por el momento
+# ============================
+# 3. BASE DE DATOS SIMULADA
+# ============================
 usuarios = [
-    {"id": "1", "nombre": "Rafael", "edad": "20"},
-    {"id": "2", "nombre": "Berna", "edad": "25"},
-    {"id": "3", "nombre": "Yahir", "edad": "30"},
+    {"id": 1, "nombre": "Fany", "edad": 21},
+    {"id": 2, "nombre": "Aly", "edad": 21},
+    {"id": 3, "nombre": "Dulce", "edad": 21},
 ]
-# 3. Endpoints
-@app.get("/", tags=['Inicio'])
+
+# ============================
+# 4. MODELO DE VALIDACIÓN PYDANTIC
+# ============================
+class crear_usuario(BaseModel):
+    id: int = Field(gt=0, description="Identificador de usuario")
+    nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
+    edad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 y 123")
+
+
+# ============================
+# 5. ENDPOINTS BÁSICOS
+# ============================
+@app.get("/", tags=["Inicio"])
 async def holamundo():
-    return {"mensaje": "Hola mundo FASTAPI"}
+    return {"message": "Hola Mundo desde FastAPI"}
 
-@app.get("/bienvenidos", tags=['Inicio'])
-async def bienvenidos():
-    return {"mensaje": "Bienvenidos"}
 
-@app.get("/v1/promedio", tags=['Calificaciones'])
-async def promedio():
-    await asyncio.sleep(3)  # Peticion a otra api, consultaa otra base de datos, imula llamada externa
+@app.get("/v1/bienvenida", tags=["Inicio"])
+async def bienvenida():
+    return {"message": "Bienvenido a mi API con FastAPI"}
+
+
+@app.get("/v1/promedios", tags=["Calificacion"])
+async def promedios():
+    await asyncio.sleep(3)
     return {
-        "calificacion": "7.5",
+        "promedio": 85.5,
         "estatus": "200"
     }
 
-@app.get("/v1/usuario/{id}", tags=['Parametros'])
-async def consultaUno(id: int):
-    await asyncio.sleep(3)  # Peticion a otra api, consultaa otra base de datos, imula llamada externa
-    return {"Resultado": "usuario encontrado",
-            "Estatus": "200",
+
+@app.get("/v1/usuario/{id}", tags=["Parametros"])
+async def consulta_uno(id: int):
+    await asyncio.sleep(2)
+
+    for usuario in usuarios:
+        if usuario["id"] == id:
+            return {
+                "resultado": "Usuario encontrado",
+                "datos": usuario,
+                "estatus": "200"
             }
 
-@app.get("/v1/usuario-op/", tags=['Parametros Opcional'])
-async def consultaUno(id: Optional[int] = None):
-    await asyncio.sleep(2)  # Peticion a otra api, consultaa otra base de datos, imula llamada externa
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado"
+    )
+
+
+@app.get("/v1/usuarios_op/", tags=["Parametro Opcional"])
+async def consulta_op(id: Optional[int] = None):
+    await asyncio.sleep(2)
+
     if id is not None:
         for usuario in usuarios:
             if usuario["id"] == id:
-                return {"usuario encontrado":id,"Datos": usuario}
-            return{"Mensaje":"usuario no encontrado"}
-        else:
-            return {"Aviso":"No se proporciono id"}
-    
-
-@app.get("/v1/usuario/", tags=['CRUD HTTP'])
-async def consultaT():
-    return{
-        "status":"200",
-        "total": len(usuarios),
-        "data": usuarios
-    }
+                return {
+                    "Usuario encontrado": id,
+                    "Datos": usuario
+                }
+        return {"Mensaje": "Usuario no encontrado"}
+    else:
+        return {"Aviso": "No se proporciono Id"}
 
 
-@app.post("/v1/usuarios/", tags=["CRUD HTTP"])
-async def crear_usuario(usuario: dict):
+# ============================
+# 6. ENDPOINT POST (CREAR USUARIO)
+# ============================
+@app.post(
+    "/v1/usuarios/",
+    tags=["CRUD HTTP"],
+    status_code=status.HTTP_201_CREATED
+)
+async def crear_usuario_endpoint(usuario: crear_usuario):
+
+    # Validamos que no exista el ID
     for usr in usuarios:
-        if usr["id"] == usuario.get("id"):
+        if usr["id"] == usuario.id:
             raise HTTPException(
-                status_code=400,
-                detail="El usuario ya existe"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El id ya existe"
             )
-    usuarios.append(usuario)
+
+    usuarios.append(usuario.dict())
+
     return {
-        "mensaje": "Usuario creado exitosamente",
-        "status": "200",
-        "usuario": usuario
-    }       
-
-@app.put("/v1/usuarios/{id}", tags=["CRUD HTTP"])
-async def actualizar_usuario(id: int, usuario: dict):
-
-    for usr in usuarios:
-        if usr["id"] == str(id):
-            usr["nombre"] = usuario.get("nombre", usr["nombre"])
-            usr["edad"] = usuario.get("edad", usr["edad"])
-            return {
-                "mensaje": "Usuario actualizado correctamente",
-                "status": "200",
-                "usuario": usr
-            }
-
-    raise HTTPException(
-        status_code=404,
-        detail="Usuario no encontrado"
-    )
-@app.delete("/v1/usuarios/{id}", tags=["CRUD HTTP"])
-async def eliminar_usuario(id: int):
-
-    for usr in usuarios:
-        if usr["id"] == str(id):
-            usuarios.remove(usr)
-            return {
-                "mensaje": "Usuario eliminado correctamente",
-                "status": "200"
-            }
-
-    raise HTTPException(
-        status_code=404,
-        detail="Usuario no encontrado"
-    )
+        "mensaje": "Usuario Agregado",
+        "Usuario": usuario
+    }
