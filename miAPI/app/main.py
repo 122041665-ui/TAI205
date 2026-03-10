@@ -1,186 +1,116 @@
-# ==========================================
-# Importaciones principales del proyecto
-# ==========================================
-
-from fastapi import FastAPI, HTTPException, status
-from typing import Optional
+# 1. Importaciones
+from fastapi import FastAPI, status, HTTPException,Depends
 import asyncio
+from typing import Optional
 from pydantic import BaseModel, Field
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
 
-# ==========================================
-# Inicialización de la aplicación
-# Rafael Reséndiz Vázquez - API de práctica
-# ==========================================
-
+# 2. Inicialización de la APP
 app = FastAPI(
-    title="Mi PRIMER API",
-    description="Rafael Reséndiz Vazquez",
-    version="1.0.0"
+    title='Mi PRIMER API', 
+    description="Rafael", 
+    version='1.0.0'
 )
 
-
-# ==========================================
-# Base de datos ficticia (simulación temporal)
-# Se manejan tipos correctos para trabajar con Pydantic
-# ==========================================
-
+# 3. Base de datos
 usuarios = [
-    {"id": 1, "nombre": "Rafael", "edad": 20},
-    {"id": 2, "nombre": "Berna", "edad": 25},
-    {"id": 3, "nombre": "Yahir", "edad": 30},
+    {"id": 1, "nombre": "Jesús", "edad": 20},
+    {"id": 2, "nombre": "María", "edad": 25},
+    {"id": 3, "nombre": "Carlos", "edad": 30},
 ]
 
 
-# ==========================================
-# Modelo de validación con Pydantic
-# Se agregan validaciones personalizadas
-# ==========================================
 
-class CrearUsuario(BaseModel):
-    id: int = Field(..., gt=0, description="Identificador único del usuario")
+# 4. Modelo de Validación Pydantic 
+class crear_usuario(BaseModel):
+    
+    id: int = Field(..., gt=0, description="Identificador de usuario")
+   
     nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
-    edad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 y 123 años")
+    
+    edad: int = Field(..., ge=1, le=123, description="Edad válida entre 1 y 123")
 
 
-# ==========================================
-# Endpoints básicos
-# ==========================================
+#seguridad http basic
 
-@app.get("/", tags=["Inicio"])
+security = HTTPBasic()
+def verificar_peticion(credenciales: HTTPBasicCredentials = Depends(security)):
+    userAuth = secrets.compare_digest(credenciales.username, "jesusgonzalez")
+    passAuth = secrets.compare_digest(credenciales.password, "123456")
+    
+    if not (userAuth and passAuth):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales noa autorizadas",
+        )
+    return credenciales.username
+
+
+# 5. Endpoints de Inicio
+@app.get("/", tags=['Inicio'])
 async def holamundo():
     return {"mensaje": "Hola mundo FASTAPI"}
 
-
-@app.get("/bienvenidos", tags=["Inicio"])
+@app.get("/bienvenidos", tags=['Inicio'])
 async def bienvenidos():
     return {"mensaje": "Bienvenidos"}
 
-
-# ==========================================
-# Simulación de llamada externa con asyncio
-# ==========================================
-
-@app.get("/v1/promedio", tags=["Calificaciones"])
-async def promedio():
-    await asyncio.sleep(3)  # Simulación de consulta externa
-    return {
-        "calificacion": "7.5",
-        "estatus": "200"
-    }
-
-
-# ==========================================
-# Consulta de usuario por ID (parámetro obligatorio)
-# ==========================================
-
-@app.get("/v1/usuario/{id}", tags=["Parametros"])
-async def consulta_uno(id: int):
-
-    for usuario in usuarios:
-        if usuario["id"] == id:
-            return {
-                "resultado": "Usuario encontrado",
-                "estatus": "200",
-                "data": usuario
-            }
-
-    raise HTTPException(
-        status_code=404,
-        detail="Usuario no encontrado"
-    )
-
-
-# ==========================================
-# Consulta con parámetro opcional
-# ==========================================
-
-@app.get("/v1/usuario-op/", tags=["Parametros Opcional"])
-async def consulta_opcional(id: Optional[int] = None):
-
-    if id is None:
-        return {"aviso": "No se proporcionó ID"}
-
-    for usuario in usuarios:
-        if usuario["id"] == id:
-            return {"usuario encontrado": usuario}
-
-    return {"mensaje": "Usuario no encontrado"}
-
-
-# ==========================================
-# Obtener todos los usuarios
-# ==========================================
-
-@app.get("/v1/usuarios/", tags=["CRUD HTTP"])
-async def consultar_todos():
+# 6. Endpoints de Consultas
+@app.get("/v1/usuario/", tags=['CRUD HTTP'])
+async def consulta_todos_los_usuarios():
     return {
         "status": "200",
         "total": len(usuarios),
         "data": usuarios
     }
 
+@app.get("/v1/usuario/{id}", tags=['Parametros'])
+async def consulta_por_id_ruta(id: int):
+    for usuario in usuarios:
+        if usuario["id"] == id:
+            return {"Resultado": "usuario encontrado", "Datos": usuario}
+    raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-# ==========================================
-# Crear nuevo usuario con validación Pydantic
-# ==========================================
-
-@app.post("/v1/usuarios/", tags=["CRUD HTTP"], status_code=status.HTTP_201_CREATED)
-async def crear_usuario(usuario: CrearUsuario):
-
+# 7. Endpoint POST con Validación Pydantic 
+@app.post("/v1/usuario/", tags=['CRUD HTTP'], status_code=status.HTTP_201_CREATED)
+async def crear_nuevo_usuario(usuario: crear_usuario):
+    
     for usr in usuarios:
         if usr["id"] == usuario.id:
             raise HTTPException(
-                status_code=400,
-                detail="El ID ya existe"
+                status_code=400, 
+                detail="El id ya existe"
             )
-
-    usuarios.append(usuario.dict())
-
+    
+   
+    usuarios.append(usuario.model_dump())
     return {
-        "mensaje": "Usuario agregado correctamente",
-        "usuario": usuario
+        "mensaje": "Usuario Agregado correctamente",
+        "Usuario": usuario
     }
 
+# 8. Endpoint DELETE
 
-# ==========================================
-# Actualizar usuario existente
-# ==========================================
+@app.delete("/v1/usuario/{id}", tags=['CRUD HTTP'], status_code=status.HTTP_200_OK)
+async def eliminar_usuario(id: int, username: str = Depends(verificar_peticion)):
+    
+    usuario = next((u for u in usuarios if u["id"] == id), None)
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    usuarios.remove(usuario)
+    return {"mensaje": f"Usuario eliminado por {username}"}
+#docker
+#cd miAPI
+#docker compose build
+#docker compose up -d
+#docker ps
 
-@app.put("/v1/usuarios/{id}", tags=["CRUD HTTP"])
-async def actualizar_usuario(id: int, usuario: dict):
+#git add .
 
-    for usr in usuarios:
-        if usr["id"] == id:
-            usr["nombre"] = usuario.get("nombre", usr["nombre"])
-            usr["edad"] = usuario.get("edad", usr["edad"])
+#git commit -m "Actualizacion API FastAPI con Docker"
 
-            return {
-                "mensaje": "Usuario actualizado correctamente",
-                "usuario": usr
-            }
-
-    raise HTTPException(
-        status_code=404,
-        detail="Usuario no encontrado"
-    )
-
-
-# ==========================================
-# Eliminar usuario
-# ==========================================
-
-@app.delete("/v1/usuarios/{id}", tags=["CRUD HTTP"])
-async def eliminar_usuario(id: int):
-
-    for usr in usuarios:
-        if usr["id"] == id:
-            usuarios.remove(usr)
-            return {
-                "mensaje": "Usuario eliminado correctamente"
-            }
-
-    raise HTTPException(
-        status_code=404,
-        detail="Usuario no encontrado"
-    )
+#git push origin main
