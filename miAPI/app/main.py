@@ -37,7 +37,7 @@ class crear_usuario(BaseModel):
 
 security = HTTPBasic()
 def verificar_peticion(credenciales: HTTPBasicCredentials = Depends(security)):
-    userAuth = secrets.compare_digest(credenciales.username, "jesusgonzalez")
+    userAuth = secrets.compare_digest(credenciales.username, "Rafael Resendiz")
     passAuth = secrets.compare_digest(credenciales.password, "123456")
     
     if not (userAuth and passAuth):

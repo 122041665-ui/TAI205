@@ -1,10 +1,8 @@
 services:
   api:
     build: .
-    container_name: server_FastAPI
+    container_name: miapi_fastapi
     ports:
       - "5010:5010"
     volumes:
       - ./app:/app/app
-    
-    

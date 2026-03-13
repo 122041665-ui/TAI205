@@ -58,7 +58,6 @@ async def crear_reserva(reserva: CrearReserva, username: str = Depends(verificar
         "fecha": reserva.fecha,
         "Salida": reserva.Salida,
         "Tipo": reserva.Tipo,
-    
     }
     reservas.append(nueva_reserva)
     return nueva_reserva
