@@ -3,6 +3,6 @@ services:
     build: .
     container_name: miapi_fastapi
     ports:
-      - "5001:5001"
+      - "5010:5010"
     volumes:
       - ./app:/app/app
