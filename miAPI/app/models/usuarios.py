@@ -2,8 +2,6 @@ from pydantic import BaseModel, Field
 # 4. Modelo de Validación Pydantic 
 
 class crear_usuario(BaseModel):
-    
-    id: int = Field(..., gt=0, description="Identificador de usuario")
    
     nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
     

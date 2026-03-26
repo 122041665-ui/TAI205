@@ -4,6 +4,11 @@ from app.data.database import usuarios
 from app.models.usuarios import crear_usuario
 from app.security.auth import verificar_peticion
 
+from sqlalchemy.orm import Session
+from app.data.db import get_db
+from app.data.usuario import usuario as usuarioDB
+
+
 routerU = APIRouter(
     prefix= "/v1/usuario",
     tags= ['CRUD HTTP']
@@ -12,11 +17,12 @@ routerU = APIRouter(
 # 6. Endpoints de Consultas
 # get
 @routerU.get("/")
-async def consultaT():
+async def consultaT(db: Session = Depends(get_db)):
+    queryUsuarios= db.query(usuarioDB).all()
     return {
         "status": "200",
-        "total": len(usuarios),
-        "data": usuarios
+        "total": len(queryUsuarios),
+        "data": queryUsuarios
     }
 
 # get por id
@@ -37,19 +43,15 @@ async def consulta_uno(id: int):
 
 # post
 @routerU.post("/", status_code=status.HTTP_201_CREATED)
-async def crea_usuario(usuario: crear_usuario):
-    for usr in usuarios:
-        if usr["id"] == usuario.id:
-            raise HTTPException(
-                status_code=400,
-                detail="el usuario ya existe"
-            )
-
-    usuarios.append(usuario.dict())
+async def crear_usuario(usuarioP: crear_usuario, db: Session = Depends(get_db)):
+    usuarioNuevo=usuarioDB(nombre= usuarioP.nombre,edad= usuarioP.edad)
+    db.add(usuarioNuevo)
+    db.commit()
+    db.com()
 
     return {
         "mensaje": "usuario creado exitosamente",
-        "usuario": usuario.dict()
+        "usuario": usuarioP.dict()
     }
 
 # put
